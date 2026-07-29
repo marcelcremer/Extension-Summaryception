@@ -7,6 +7,6 @@
     "css": "style.css",
     "author": "Lodactio",
     "version": "5.5.3",
-    "homePage": "https://github.com/Lodactio/Extension-Summaryception",
-    "auto_update": true
+    "homePage": "https://github.com/marcelcremer/Extension-Summaryception",
+    "auto_update": false
 }

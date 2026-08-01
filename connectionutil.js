@@ -159,6 +159,12 @@ async function sendViaDefault(systemPrompt, userPrompt, responseLength) {
  * NOT as a generateRaw()-style options object. Passing {systemPrompt, prompt} as
  * the second argument causes the entire object to be stuffed into the message
  * content field, resulting in "Invalid input" / validation errors from the API.
+ *
+ * IMPORTANT: The real signature is sendRequest(profileId, prompt, maxTokens, custom, overridePayload).
+ * maxTokens is a true positional parameter, not part of an options object — passing
+ * an object literal there (instead of `undefined`/a number) gets serialized directly
+ * into the request's max_tokens field and causes 422 Unprocessable Entity on backends
+ * that validate the OpenAI schema strictly.
  */
 async function sendViaProfile(profileId, systemPrompt, userPrompt) {
     if (!profileId) {
@@ -189,15 +195,22 @@ async function sendViaProfile(profileId, systemPrompt, userPrompt) {
 
     try {
         // Build messages as proper {role, content} objects.
-        // sendRequest expects: sendRequest(profileId, messages, options?)
-        // where messages is a string OR an array of {role, content} objects.
+        // sendRequest expects: sendRequest(profileId, prompt, maxTokens, custom?, overridePayload?)
+        // where prompt is a string OR an array of {role, content} objects.
+        //
+        // maxTokens is a true positional argument (NOT part of an options object) —
+        // passing an object literal here gets serialized straight into the request's
+        // max_tokens field, which most backends reject with 422 Unprocessable Entity.
+        // Passing `custom` correctly also lets us opt out of preset/instruct bleed
+        // (the "inherits preset formatting" caveat from Summaryception's README).
         const messages = [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
         ];
 
-        const raw = await service.sendRequest(profileId, messages, {
-            ignoreInstruct: true,
+        const raw = await service.sendRequest(profileId, messages, undefined, {
+            includePreset: false,
+            includeInstruct: false,
         });
 
         // Debug: log what we actually got back
